@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="testFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/test" doc:name="HTTP"/>
+        <set-variable variableName="exceptionType" value="#[message.inboundProperties.'http.query.params'.exceptionType]" doc:name="Variable"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.exceptionType==&quot;NullPointerException&quot;]">
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[throw new java.lang.NullPointerException("test NullPointerException")]]></scripting:script>
+                </scripting:component>
+            </when>
+            <when expression="#[flowVars.exceptionType==&quot;RuntimeExcpetion&quot;]">
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[throw new java.lang.RuntimeException("test RuntimeException")]]></scripting:script>
+                </scripting:component>
+            </when>
+            <otherwise>
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[throw new java.lang.IllegalStateException("test IllegalStateException")]]></scripting:script>
+                </scripting:component>
+            </otherwise>
+        </choice>
+        <set-property propertyName="http.status" value="200" doc:name="Property"/>
+        <set-payload value="{&quot;message&quot;: &quot;no exception occurs!&quot;}" doc:name="Set Payload"/>
+        <exception-strategy ref="ChoiceExceptionStrategy" doc:name="Reference Exception Strategy"/>
+    </flow>
+    <choice-exception-strategy name="ChoiceExceptionStrategy">
+        <catch-exception-strategy when="#[exception.causedBy(java.lang.NullPointerException)]" doc:name="Catch Exception Strategy - NullPointerException">
+            <set-property propertyName="http.status" value="326" doc:name="Property"/>
+            <set-payload value="{&quot;message&quot;: &quot;NullPointerException occurs!&quot;}" doc:name="Set Payload"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy when="#[exception.causedBy(java.lang.IllegalStateException)]" doc:name="Catch Exception Strategy - IllegalStateException">
+            <set-property propertyName="http.status" value="429" doc:name="Property"/>
+            <set-payload value="{&quot;message&quot;:&quot;IllegalStateException occurs!&quot;}" doc:name="Set Payload"/>
+        </catch-exception-strategy>
+        <catch-exception-strategy when="#[exception.causedBy(java.lang.RuntimeException)]" doc:name="Catch Exception Strategy - RuntimeException">
+            <set-property propertyName="http.status" value="523" doc:name="Property"/>
+            <set-payload value="{&quot;message&quot;:&quot;RuntimeException occurs!&quot;}" doc:name="Set Payload"/>
+        </catch-exception-strategy>
+    </choice-exception-strategy>
+</mule>
